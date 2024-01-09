@@ -1,5 +1,11 @@
-import {get_dice_pool} from "./dice-helpers.js";
-import {DicePoolFFG} from "../dice/pool.js";
+import {
+    get_dice_pool
+}
+from "./dice-helpers.js";
+import {
+    DicePoolFFG
+}
+from "../dice/pool.js";
 
 /**
  * Capture a drag-and-drop event (used to capture adding crew members via a flag)
@@ -11,13 +17,13 @@ export async function register_crew(...args) {
     // check if this is an actor being dragged onto a vehicle
     let vehicle_actor;
     if (args[1].token) {
-      // this is a token, not a real actor
-      vehicle_actor = args[1].token?.actor;
-      if (!vehicle_actor) {
-        CONFIG.logger.debug("Not registering crew as entity is a token without a matching actor");
-      }
+        // this is a token, not a real actor
+        vehicle_actor = args[1].token?.actor;
+        if (!vehicle_actor) {
+            CONFIG.logger.debug("Not registering crew as entity is a token without a matching actor");
+        }
     } else {
-      vehicle_actor = args[0];
+        vehicle_actor = args[0];
     }
     if (vehicle_actor.type !== 'vehicle' || args[2].type !== 'Actor') {
         // the target is not a vehicle or the actor being dragged onto it is a vehicle
@@ -81,10 +87,10 @@ export function deregister_crew(vehicle_actor, crew_member, crew_role) {
 
     CONFIG.logger.debug("Final updated flag data: ", new_flag_data);
     if (new_flag_data.length === 0) {
-      // the last crew member was removed, delete the data
-      vehicle_actor.unsetFlag('starwarsffg', 'crew');
+        // the last crew member was removed, delete the data
+        vehicle_actor.unsetFlag('starwarsffg', 'crew');
     } else {
-      vehicle_actor.setFlag('starwarsffg', 'crew', new_flag_data);
+        vehicle_actor.setFlag('starwarsffg', 'crew', new_flag_data);
     }
 }
 
@@ -97,15 +103,14 @@ export function deregister_crew(vehicle_actor, crew_member, crew_role) {
  */
 export async function change_role(vehicle_actor, crew_member, old_crew_role, new_crew_role) {
     CONFIG.logger.debug(
-      `Got role change request: vehicle ID: ${vehicle_actor} | crew ID: ${crew_member} | old role: ${old_crew_role} | new role: ${new_crew_role}`
-    );
+`Got role change request: vehicle ID: ${vehicle_actor} | crew ID: ${crew_member} | old role: ${old_crew_role} | new role: ${new_crew_role}`);
     const flag_data = vehicle_actor.getFlag('starwarsffg', 'crew');
     let new_flag_data = [];
 
     if (flag_data.filter(i => i.actor_id === crew_member && i.role === new_crew_role).length > 0) {
-      CONFIG.logger.debug("Crew member already has same role, aborting");
-      ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Role.Duplicate"));
-      return;
+        CONFIG.logger.debug("Crew member already has same role, aborting");
+        ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Role.Duplicate"));
+        return;
     }
 
     for (let i = 0; i < flag_data.length; i++) {
@@ -130,38 +135,45 @@ export async function change_role(vehicle_actor, crew_member, old_crew_role, new
  * @returns {string|boolean} a string representation of HTML for the dice in the roll
  */
 export function build_crew_roll(vehicle, crew_id, crew_role) {
-  // look up the sheet for passing to the roller
-  const crew_member = game.actors.get(crew_id);
-  if (crew_member === undefined) {
-    ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Actor.Removed"));
-    deregister_crew(ship, crew_id, crew_role);
-    return false;
-  }
-  const starting_pool = {'difficulty': 0};
-  const registeredRoles = game.settings.get('starwarsffg', 'arrayCrewRoles');
-  // look up the defined metadata for the assigned role
-  const role_info = registeredRoles.filter(i => i.role_name === crew_role);
-  // validate the role still exists in our settings
-  if (role_info.length === 0) {
-    ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Role.Removed"));
-    return false;
-  }
-  // validate that it's a valid role
-  if (role_info[0].role_skill === undefined) {
-    ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Role.Invalid"));
-    return false;
-  }
-  // check if the pool uses handling
-  if (role_info[0].use_handling) {
-    const handling = vehicle?.system?.stats?.handling?.value;
-    // add modifiers from the vehicle handling
-    if (handling > 0) {
-      starting_pool['boost'] = handling;
-    } else if (handling < 0) {
-      starting_pool['setback'] = handling * -1;
+    // look up the sheet for passing to the roller
+    const crew_member = game.actors.get(crew_id);
+    if (crew_member === undefined) {
+        ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Actor.Removed"));
+        deregister_crew(ship, crew_id, crew_role);
+        return false;
     }
-  }
-  let pool = new DicePoolFFG(starting_pool);
-  pool = get_dice_pool(crew_id, role_info[0].role_skill, pool);
-  return pool.renderPreview().innerHTML;
+    const starting_pool = {
+        'difficulty': 0
+    };
+    const registeredRoles = game.settings.get('starwarsffg', 'arrayCrewRoles');
+    // look up the defined metadata for the assigned role
+    const role_info = registeredRoles.filter(i => i.role_name === crew_role);
+    // validate the role still exists in our settings
+    if (role_info.length === 0) {
+        ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Role.Removed"));
+        return false;
+    }
+    // validate that it's a valid role
+    if (role_info[0].role_skill === undefined) {
+        ui.notifications.warn(game.i18n.localize("SWFFG.Crew.Role.Invalid"));
+        return false;
+    }
+    // check if the pool uses handling
+    if (role_info[0].use_handling) {
+        const handling = vehicle?.system?.stats?.handling?.value;
+        // add modifiers from the vehicle handling
+        if (handling > 0) {
+            starting_pool['boost'] = handling;
+        } else if (handling < 0) {
+            starting_pool['setback'] = handling * -1;
+        }
+    }
+    let pool = new DicePoolFFG(starting_pool);
+    try {
+        pool = get_dice_pool(crew_id, role_info[0].role_skill, pool);
+    } catch (err) {
+        console.error(`Error getting dice pool for crew member`);
+        return '<p style="color:red"> [Error] Get dice pool</p>';
+    }
+    return pool.renderPreview().innerHTML;
 }

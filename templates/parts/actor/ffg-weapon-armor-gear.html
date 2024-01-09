@@ -1,5 +1,8 @@
 {{#if (ne actor.type "vehicle")}} {{!-- Weapons List --}}
+<div class="collapse-container">
+<section class="collapse">
 <ul class="items">
+  <input class="collapse-input" type="checkbox" />
   <li class="items-header flexrow">
     <div class="header-name">{{localize "SWFFG.ItemsWeapons"}}</div>
     <div class="">{{localize "SWFFG.Equipped"}}</div>
@@ -10,7 +13,7 @@
     <!-- <div class="">{{localize "SWFFG.ItemsSpecial"}}</div> -->
     <div class="item-add weapon"><i class="far fa-plus-square"></i></div>
   </li>
-
+  <div class="collapse-content">
   <ul class="items-list">
     {{#each items as |item id|}} {{#iff item.type '==' 'weapon'}}
     <li class="item flexrow" data-item-id="{{item._id}}" data-ability="{{item.system.skill.value}}">
@@ -42,8 +45,10 @@
     </li>
     {{/iff}} {{/each}}
   </ul>
+  </div>
 </ul>
-
+</section>
+</div>
 {{!-- Armour List --}}
 <ul class="items">
   <li class="items-header flexrow">
@@ -184,7 +189,7 @@
 <ul class="items">
   <li class="items-header flexrow">
     <div class="header-name">{{localize "SWFFG.VehicleTabShipCrew"}}</div>
-    <div>Role</div><div></div>
+    <div>Rôle</div><div></div>
   </li>
 
   <ul class="items-list">
