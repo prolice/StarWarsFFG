@@ -7,7 +7,7 @@
 // Import Modules
 import { FFG } from "./swffg-config.js";
 import { ActorFFG } from "./actors/actor-ffg.js";
-import { CombatFFG } from "./combat-ffg.js";
+import {CombatFFG, CombatTrackerFFG} from "./combat-ffg.js";
 import { ItemFFG } from "./items/item-ffg.js";
 import { ItemSheetFFG } from "./items/item-sheet-ffg.js";
 import { ItemSheetFFGV2 } from "./items/item-sheet-ffg-v2.js";
@@ -60,6 +60,7 @@ Hooks.once("init", async function () {
     ActorFFG,
     ItemFFG,
     CombatFFG,
+    CombatTrackerFFG,
     RollFFG,
     DiceHelpers,
     RollBuilderFFG,
@@ -142,6 +143,23 @@ Hooks.once("init", async function () {
     default: {
       $('link[href*="styles/starwarsffg.css"]').prop("disabled", false);
     }
+  }
+
+  /**
+   * Register the option to use generic slots for combat
+   */
+  game.settings.register("starwarsffg", "useGenericSlots", {
+    name: game.i18n.localize("SWFFG.Settings.UseGenericSlots.Name"),
+    hint: game.i18n.localize("SWFFG.Settings.UseGenericSlots.Hint"),
+    scope: "world",
+    config: true,
+    default: true,
+    type: Boolean,
+    onChange: (rule) => window.location.reload()
+  });
+
+  if (game.settings.get("starwarsffg", "useGenericSlots")) {
+    CONFIG.ui.combat = CombatTrackerFFG;
   }
 
   /**
@@ -775,6 +793,29 @@ Hooks.once("ready", async () => {
         CONFIG.logger.error(`Error during system migration`, err);
       }
     }
+    if (isAlpha || isCurrentVersionNullOrBlank(currentVersion) || parseFloat(currentVersion) < 1.805) {
+      // update skill sets
+      ui.notifications.info('Updating skill groupings, please be patient...');
+      try {
+        const skillTheme = game.settings.get("starwarsffg", "skilltheme");
+        if (skillTheme === 'starwars') {
+          const skills = CONFIG.FFG.alternateskilllists.find((list) => list.id === skillTheme).skills;
+          const actors = game.actors.filter(i => i.type === 'character' || i.type === 'minion');
+          for (const actor of actors) {
+            for (const skillName of Object.keys(actor.system.skills)) {
+              let skillData = actor.system.skills[skillName];
+              if (skillData.type !== skills[skillName].type) {
+                skillData.type = skills[skillName].type;
+                await actor.update({[`system.skills.${skillName}.type`]: skillData.type});
+              }
+            }
+          }
+        }
+      } catch (error) {
+        CONFIG.logger.warn(error);
+      }
+      ui.notifications.info('Done updating skill groupings!');
+    }
     game.settings.set("starwarsffg", "systemMigrationVersion", version);
   }
 
@@ -844,6 +885,23 @@ Hooks.once("ready", async () => {
   dTracker.render(true);
 
   await registerCrewRoles();
+
+  if (game.settings.get("starwarsffg", "useGenericSlots")) {
+    if (game.user.isGM) {
+      game.socket.on("system.starwarsffg", async (...args) => {
+        if (game.user.id === game.users.find(i => i.isGM)?.id) {
+          const event_type = args[0].event;
+          if (event_type === "combat") {
+            CONFIG.logger.debug("Processing combat event from player");
+            const data = args[0]?.data;
+            CONFIG.logger.debug(`Received data: ${data.combatId}, ${data.round}, ${data.slot}, ${data.combatantId}`);
+            const combat = game.combats.get(data.combatId);
+            await combat.claimSlot(data.round, data.slot, data.combatantId);
+          }
+        }
+      });
+    }
+  }
 });
 
 Hooks.once("diceSoNiceReady", (dice3d) => {
